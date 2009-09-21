@@ -26,13 +26,8 @@
 #ifndef MOUNTLIST_H_
 # define MOUNTLIST_H_
 
-#ifndef __VBCC__
-  # include <stdbool.h>
-#else
-    #define bool char
-#endif
-
-#include <sys/types.h>
+# include <stdbool.h>
+# include <sys/types.h>
 
 /* A mount table entry. */
 struct mount_entry
