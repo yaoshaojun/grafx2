@@ -2,7 +2,6 @@
 */
 /*  Grafx2 - The Ultimate 256-color bitmap paint program
 
-    Copyright 2011 Pawel Góralski
     Copyright 2008 Peter Gordon
     Copyright 2008 Yves Rizoud
     Copyright 2007 Adrien Destugues
@@ -33,7 +32,6 @@
 #include "global.h"
 #include "misc.h"
 #include "readini.h"
-#include "setup.h"
 
 void Load_INI_clear_string(char * str, byte keep_comments)
 {
@@ -434,13 +432,6 @@ int Load_INI(T_Config * conf)
   char   value_label[1024];
 
   Line_number_in_INI_file=0;
-  
-#if defined(__WIZ__) || defined(__CAANOO__)
-  conf->Stylus_mode = 1;
-#else
-  conf->Stylus_mode = 0;
-#endif
-
 
   // On alloue les zones de mémoire:
   buffer=(char *)malloc(1024);
@@ -448,14 +439,14 @@ int Load_INI(T_Config * conf)
 
   // On calcule le nom du fichier qu'on manipule:
   strcpy(filename,Config_directory);
-  strcat(filename,INI_FILENAME);
+  strcat(filename,"gfx2.ini");
 
   file=fopen(filename,"r");
   if (file==0)
   {
     // Si le fichier ini est absent on le relit depuis gfx2def.ini
     strcpy(filename,Data_directory);
-    strcat(filename,INIDEF_FILENAME);
+    strcat(filename,"gfx2def.ini");
     file=fopen(filename,"r");
     if (file == 0)
     {
@@ -903,39 +894,6 @@ int Load_INI(T_Config * conf)
       Menu_bars[index].Visible = (values[0] & (1<<index)) ? 1 : 0;
     }
   }
-  
-  conf->Right_click_colorpick=0;
-  // Optional, right mouse button to pick colors (>=2.3)
-  if (!Load_INI_get_values (file,buffer,"Right_click_colorpick",1,values))
-  {
-    conf->Right_click_colorpick=(values[0]!=0);
-  }
-  
-  conf->Sync_views=1;
-  // Optional, synced view of main and spare (>=2.3)
-  if (!Load_INI_get_values (file,buffer,"Sync_views",1,values))
-  {
-    conf->Sync_views=(values[0]!=0);
-  }
-  
-  conf->Swap_buttons=0;
-  // Optional, key for swap buttons (>=2.3)
-  if (!Load_INI_get_values (file,buffer,"Swap_buttons",1,values))
-  {
-    switch(values[0])
-    {
-      case 1:
-        conf->Swap_buttons=MOD_CTRL;
-        break;
-      case 2:
-        conf->Swap_buttons=MOD_ALT;
-        break;
-    }
-  }
-  
-  
-  
-  // Insert new values here
 
   fclose(file);
 

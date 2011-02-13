@@ -49,9 +49,5 @@ for y = 0, h - 1, 1 do
     putpicturepixel(x, y, c);
 
   end
-  updatescreen()
-  if (waitbreak(0)==1) then
-    return
-  end
 end
 

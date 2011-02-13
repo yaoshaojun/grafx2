@@ -1,4 +1,5 @@
--- Glass grid filter
+-- 18bit colour space from palette
+--
 
 -- Copyright 2010 Paulo Silva
 --
@@ -8,12 +9,10 @@
 -- of the License. See <http://www.gnu.org/licenses/>
 
 w,h=getpicturesize();
-for y1=0,h-1,8 do
-  for x1=0,w-1,8 do
-    for y2=0,3,1 do
-      for x2=0,7,1 do
-        c1=getpicturepixel(x1+x2,y1+y2)
-        c2=getpicturepixel(x1+7-x2,y1+7-y2)
-        putpicturepixel(x1+x2,y1+y2,c2)
-        putpicturepixel(x1+7-x2,y1+7-y2,c1)
+for y1=0,7,1 do
+  for x1=0,7,1 do
+    for y2=0,63,1 do
+      for x2=0,63,1 do
+        putpicturepixel(x1*64+x2,y1*64+y2,matchcolor((y2*255)/64,
+((y1*8+x1)*255)/64,(x2*255)/64))
         end;end;end;end

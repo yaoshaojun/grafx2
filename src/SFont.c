@@ -69,7 +69,7 @@ static Uint32 GetPixel(SDL_Surface *Surface, Sint32 X, Sint32 Y)
 
 SFont_Font* SFont_InitFont(SDL_Surface* Surface)
 {
-    int x = 0, i = 33;
+    int x = 0, i = 0;
     Uint32 pixel;
     SFont_Font* Font;
     Uint32 pink;
@@ -78,42 +78,21 @@ SFont_Font* SFont_InitFont(SDL_Surface* Surface)
         return NULL;
 
     Font = (SFont_Font *) malloc(sizeof(SFont_Font));
-    memset(Font, 0, sizeof(SFont_Font));
-    
     Font->Surface = Surface;
 
     SDL_LockSurface(Surface);
 
-    pink = GetPixel(Surface, 0, 0);
+    pink = SDL_MapRGB(Surface->format, 255, 0, 255);
     while (x < Surface->w) {
-        if (GetPixel(Surface, x, 0) != pink) { 
-            Font->CharBegin[i]=x;
-            while((x < Surface->w) && (GetPixel(Surface, x, 0)!= pink))
+        if (GetPixel(Surface, x, 0) == pink) { 
+            Font->CharPos[i++]=x;
+            while((x < Surface->w) && (GetPixel(Surface, x, 0)== pink))
                 x++;
-            Font->CharWidth[i]=x-Font->CharBegin[i];
-            i++;
+            Font->CharPos[i++]=x;
         }
         x++;
     }
-    
-    // Create lowercase characters, if not present
-    for (i=0; i <26; i++)
-    {
-      if (Font->CharWidth['a'+i]==0)
-      {
-        Font->CharBegin['a'+i]=Font->CharBegin['A'+i];
-        Font->CharWidth['a'+i]=Font->CharWidth['A'+i];
-      }
-    }
-    
-    // Determine space width.    
-    // This strange format doesn't allow font designer to write explicit
-    // space as a character.
-    // Rule: A space should be as large as the character " if available,
-    // or 'a' if it's not.
-    Font->Space = Font->CharWidth[(int)'"'];
-    if (Font->Space<2)
-      Font->Space = Font->CharWidth[(int)'a'];
+    Font->MaxPos = x-1;
     
     pixel = GetPixel(Surface, 0, Surface->h-1);
     SDL_UnlockSurface(Surface);
@@ -132,6 +111,7 @@ void SFont_Write(SDL_Surface *Surface, const SFont_Font *Font,
                  int x, int y, const char *text)
 {
     const char* c;
+    int charoffset;
     SDL_Rect srcrect, dstrect;
 
     if(text == NULL)
@@ -143,39 +123,42 @@ void SFont_Write(SDL_Surface *Surface, const SFont_Font *Font,
     srcrect.h = dstrect.h = Font->Surface->h - 1;
 
     for(c = text; *c != '\0' && x <= Surface->w ; c++) {
+        charoffset = ((int) (*c - 33)) * 2 + 1;
         // skip spaces and nonprintable characters
-        if (*c == ' ' || Font->CharWidth[(int)*c]==0) {
-            x += Font->Space;
+        if (*c == ' ' || charoffset < 0 || charoffset > Font->MaxPos) {
+            x += Font->CharPos[2]-Font->CharPos[1];
             continue;
         }
 
-        srcrect.w = Font->CharWidth[(int)*c];
+        srcrect.w = Font->CharPos[charoffset+2] - Font->CharPos[charoffset];
         dstrect.w = srcrect.w;
-        srcrect.x = Font->CharBegin[(int)*c];
+        srcrect.x = Font->CharPos[charoffset];
         dstrect.x = x;
 
         SDL_BlitSurface(Font->Surface, &srcrect, Surface, &dstrect); 
 
-        x += Font->CharWidth[(int)*c];
+        x += Font->CharPos[charoffset+1] - Font->CharPos[charoffset];
     }
 }
 
 int SFont_TextWidth(const SFont_Font *Font, const char *text)
 {
     const char* c;
+    int charoffset=0;
     int width = 0;
 
     if(text == NULL)
         return 0;
 
     for(c = text; *c != '\0'; c++) {
+        charoffset = ((int) *c - 33) * 2 + 1;
         // skip spaces and nonprintable characters
-        if (*c == ' ' || Font->CharWidth[(int)*c]==0) {
-            width += Font->Space;
+        if (*c == ' ' || charoffset < 0 || charoffset > Font->MaxPos) {
+            width += Font->CharPos[2]-Font->CharPos[1];
             continue;
         }
         
-        width += Font->CharWidth[(int)*c];
+        width += Font->CharPos[charoffset+1] - Font->CharPos[charoffset];
     }
 
     return width;

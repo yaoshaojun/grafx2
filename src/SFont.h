@@ -56,9 +56,8 @@ extern "C" {
 /// and call InitFont( YourFont );
 typedef struct {
         SDL_Surface *Surface;   
-        int CharBegin[256];
-        int CharWidth[256];
-        int Space;
+        int CharPos[512];
+        int MaxPos;
 } SFont_Font;
 
 ///

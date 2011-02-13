@@ -2,7 +2,6 @@
 */
 /*  Grafx2 - The Ultimate 256-color bitmap paint program
 
-    Copyright 2011 Pawel Góralski
     Copyright 2008 Yves Rizoud
     Copyright 1996-2001 Sunset Design (Guillaume Dorme & Karl Maritaud)
 
@@ -72,8 +71,6 @@ char * Find_last_slash(const char * str);
 
 #if defined(__WIN32__)
   #define PATH_SEPARATOR "\\"
-#elif defined(__MINT__)
-  #define PATH_SEPARATOR "\\"
 #else
   #define PATH_SEPARATOR "/"
 #endif
@@ -92,10 +89,6 @@ int  Directory_exists(char * directory);
 
 /// Scans a directory, calls Callback for each file in it,
 void For_each_file(const char * directory_name, void Callback(const char *));
-
-/// Scans a directory, calls Callback for each file or directory in it,
-void For_each_directory_entry(const char * directory_name, void Callback(const char *, byte is_file, byte is_directory, byte is_hidden));
-
 
 ///
 /// Creates a fully qualified name from a directory and filename.

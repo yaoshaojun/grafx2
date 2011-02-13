@@ -2,7 +2,6 @@
 */
 /*  Grafx2 - The Ultimate 256-color bitmap paint program
 
-    Copyright 2011 Pawel Góralski
     Copyright 2009 Petter Lindquist
     Copyright 2008 Yves Rizoud
     Copyright 2008 Franck Charlet
@@ -368,8 +367,7 @@ void Load_PKM(T_IO_Context * context)
 
           Compteur_de_donnees_packees=0;
           Compteur_de_pixels=0;
-          // Header size is 780
-          Taille_pack=(file_size)-780-header.Jump;
+          Taille_pack=(file_size)-sizeof(T_PKM_Header)-header.Jump;
 
           // Boucle de décompression:
           while ( (Compteur_de_pixels<image_size) && (Compteur_de_donnees_packees<Taille_pack) && (!File_error) )
@@ -638,6 +636,7 @@ void Save_PKM(T_IO_Context * context)
 
 
 //////////////////////////////////// CEL ////////////////////////////////////
+#pragma pack(1)
 typedef struct
 {
   word Width;              // width de l'image
@@ -656,6 +655,7 @@ typedef struct
   word Y_offset;         // Offset en Y de l'image
   byte Filler2[16];        // ???
 } T_CEL_Header2;
+#pragma pack()
 
 // -- Tester si un fichier est au format CEL --------------------------------
 
@@ -688,7 +688,7 @@ void Test_CEL(T_IO_Context * context)
       //   Vu que ce header n'a pas de signature, il va falloir tester la
       // cohérence de la dimension de l'image avec celle du fichier.
       
-      size=file_size-4;
+      size=file_size-sizeof(T_CEL_Header1);
       if ( (!size) || ( (((header1.Width+1)>>1)*header1.Height)!=size ) )
       {
         // Tentative de reconnaissance de la signature des nouveaux fichiers
@@ -734,7 +734,7 @@ void Load_CEL(T_IO_Context * context)
   short y_pos;
   byte  last_byte=0;
   long  file_size;
-  const long int header_size = 4;
+  const long int header_size = (long int)(sizeof(header1.Width)+sizeof(header1.Height));
 
   File_error=0;
   Get_full_filename(filename, context->File_name, context->File_directory);
@@ -774,7 +774,7 @@ void Load_CEL(T_IO_Context * context)
         // On réessaye avec le nouveau format
 
         fseek(file,0,SEEK_SET);
-        if (Read_bytes(file,header2.Signature,4)
+        if (Read_bytes(file,header2.Signature,sizeof(header2.Signature))
         && Read_byte(file,&(header2.Kind))
         && Read_byte(file,&(header2.Nb_bits))
         && Read_word_le(file,&(header2.Filler1))
@@ -782,7 +782,7 @@ void Load_CEL(T_IO_Context * context)
         && Read_word_le(file,&(header2.Height))
         && Read_word_le(file,&(header2.X_offset))
         && Read_word_le(file,&(header2.Y_offset))
-        && Read_bytes(file,header2.Filler2,16)
+        && Read_bytes(file,header2.Filler2,sizeof(header2.Filler2))
         )
         {
           // Chargement d'un fichier CEL avec signature (nouveaux fichiers)
@@ -941,7 +941,7 @@ void Save_CEL(T_IO_Context * context)
       for (x_pos=0;x_pos<16;x_pos++)  // Initialisation du filler 2 (?)
         header2.Filler2[x_pos]=0;
 
-      if (Write_bytes(file,header2.Signature,4)
+      if (Write_bytes(file,header2.Signature,sizeof(header2.Signature))
       && Write_byte(file,header2.Kind)
       && Write_byte(file,header2.Nb_bits)
       && Write_word_le(file,header2.Filler1)
@@ -949,7 +949,7 @@ void Save_CEL(T_IO_Context * context)
       && Write_word_le(file,header2.Height)
       && Write_word_le(file,header2.X_offset)
       && Write_word_le(file,header2.Y_offset)
-      && Write_bytes(file,header2.Filler2,14)
+      && Write_bytes(file,header2.Filler2,sizeof(header2.Filler2))
       )
       {
         // Sauvegarde de l'image
@@ -973,6 +973,7 @@ void Save_CEL(T_IO_Context * context)
 
 
 //////////////////////////////////// KCF ////////////////////////////////////
+#pragma pack(1)
 typedef struct
 {
   struct
@@ -984,6 +985,7 @@ typedef struct
     } color[16];
   } Palette[10];
 } T_KCF_Header;
+#pragma pack()
 
 // -- Tester si un fichier est au format KCF --------------------------------
 
@@ -991,7 +993,7 @@ void Test_KCF(T_IO_Context * context)
 {
   char filename[MAX_PATH_CHARACTERS];
   FILE *file;
-  T_KCF_Header header1;
+  T_KCF_Header buffer;
   T_CEL_Header2 header2;
   int pal_index;
   int color_index;
@@ -1000,22 +1002,18 @@ void Test_KCF(T_IO_Context * context)
   Get_full_filename(filename, context->File_name, context->File_directory);
   if ((file=fopen(filename, "rb")))
   {
-    if (File_length_file(file)==320)
+    if (File_length_file(file)==sizeof(T_KCF_Header))
     {
-      for (pal_index=0;pal_index<10 && !File_error;pal_index++)
-        for (color_index=0;color_index<16 && !File_error;color_index++)
-          if (!Read_byte(file,&header1.Palette[pal_index].color[color_index].Byte1) ||
-              !Read_byte(file,&header1.Palette[pal_index].color[color_index].Byte2))
-            File_error=1;
+      Read_bytes(file,&buffer,sizeof(T_KCF_Header));
       // On vérifie une propriété de la structure de palette:
       for (pal_index=0;pal_index<10;pal_index++)
         for (color_index=0;color_index<16;color_index++)
-          if ((header1.Palette[pal_index].color[color_index].Byte2>>4)!=0)
+          if ((buffer.Palette[pal_index].color[color_index].Byte2>>4)!=0)
             File_error=1;
     }
     else
     {
-      if (Read_bytes(file,header2.Signature,4)
+      if (Read_bytes(file,header2.Signature,sizeof(header2.Signature))
         && Read_byte(file,&(header2.Kind))
         && Read_byte(file,&(header2.Nb_bits))
         && Read_word_le(file,&(header2.Filler1))
@@ -1023,7 +1021,7 @@ void Test_KCF(T_IO_Context * context)
         && Read_word_le(file,&(header2.Height))
         && Read_word_le(file,&(header2.X_offset))
         && Read_word_le(file,&(header2.Y_offset))
-        && Read_bytes(file,header2.Filler2,14)
+        && Read_bytes(file,header2.Filler2,sizeof(header2.Filler2))
         )
       {
         if (memcmp(header2.Signature,"KiSS",4)==0)
@@ -1050,7 +1048,7 @@ void Load_KCF(T_IO_Context * context)
 {
   char filename[MAX_PATH_CHARACTERS];
   FILE *file;
-  T_KCF_Header header1;
+  T_KCF_Header buffer;
   T_CEL_Header2 header2;
   byte bytes[3];
   int pal_index;
@@ -1064,16 +1062,11 @@ void Load_KCF(T_IO_Context * context)
   if ((file=fopen(filename, "rb")))
   {
     file_size=File_length_file(file);
-    if (file_size==320)
+    if (file_size==sizeof(T_KCF_Header))
     {
       // Fichier KCF à l'ancien format
-      for (pal_index=0;pal_index<10 && !File_error;pal_index++)
-        for (color_index=0;color_index<16 && !File_error;color_index++)
-          if (!Read_byte(file,&header1.Palette[pal_index].color[color_index].Byte1) ||
-              !Read_byte(file,&header1.Palette[pal_index].color[color_index].Byte2))
-            File_error=1;
 
-      if (!File_error)
+      if (Read_bytes(file,&buffer,sizeof(T_KCF_Header)))
       {
         // Pre_load(context, ?); // Pas possible... pas d'image...
 
@@ -1085,9 +1078,9 @@ void Load_KCF(T_IO_Context * context)
           for (color_index=0;color_index<16;color_index++)
           {
             index=16+(pal_index*16)+color_index;
-            context->Palette[index].R=((header1.Palette[pal_index].color[color_index].Byte1 >> 4) << 4);
-            context->Palette[index].B=((header1.Palette[pal_index].color[color_index].Byte1 & 15) << 4);
-            context->Palette[index].G=((header1.Palette[pal_index].color[color_index].Byte2 & 15) << 4);
+            context->Palette[index].R=((buffer.Palette[pal_index].color[color_index].Byte1 >> 4) << 4);
+            context->Palette[index].B=((buffer.Palette[pal_index].color[color_index].Byte1 & 15) << 4);
+            context->Palette[index].G=((buffer.Palette[pal_index].color[color_index].Byte2 & 15) << 4);
           }
 
         for (index=0;index<16;index++)
@@ -1106,7 +1099,7 @@ void Load_KCF(T_IO_Context * context)
     {
       // Fichier KCF au nouveau format
 
-      if (Read_bytes(file,header2.Signature,4)
+      if (Read_bytes(file,header2.Signature,sizeof(header2.Signature))
         && Read_byte(file,&(header2.Kind))
         && Read_byte(file,&(header2.Nb_bits))
         && Read_word_le(file,&(header2.Filler1))
@@ -1114,7 +1107,7 @@ void Load_KCF(T_IO_Context * context)
         && Read_word_le(file,&(header2.Height))
         && Read_word_le(file,&(header2.X_offset))
         && Read_word_le(file,&(header2.Y_offset))
-        && Read_bytes(file,header2.Filler2,14)
+        && Read_bytes(file,header2.Filler2,sizeof(header2.Filler2))
         )
       {
         // Pre_load(context, ?); // Pas possible... pas d'image...
@@ -1174,7 +1167,7 @@ void Save_KCF(T_IO_Context * context)
 {
   char filename[MAX_PATH_CHARACTERS];
   FILE *file;
-  T_KCF_Header header1;
+  T_KCF_Header buffer;
   T_CEL_Header2 header2;
   byte bytes[3];
   int pal_index;
@@ -1202,16 +1195,12 @@ void Save_KCF(T_IO_Context * context)
         for (color_index=0;color_index<16;color_index++)
         {
           index=16+(pal_index*16)+color_index;
-          header1.Palette[pal_index].color[color_index].Byte1=((context->Palette[index].R>>4)<<4) | (context->Palette[index].B>>4);
-          header1.Palette[pal_index].color[color_index].Byte2=context->Palette[index].G>>4;
+          buffer.Palette[pal_index].color[color_index].Byte1=((context->Palette[index].R>>4)<<4) | (context->Palette[index].B>>4);
+          buffer.Palette[pal_index].color[color_index].Byte2=context->Palette[index].G>>4;
         }
 
-      // Write all
-      for (pal_index=0;pal_index<10 && !File_error;pal_index++)
-        for (color_index=0;color_index<16 && !File_error;color_index++)
-          if (!Write_byte(file,header1.Palette[pal_index].color[color_index].Byte1) ||
-              !Write_byte(file,header1.Palette[pal_index].color[color_index].Byte2))
-            File_error=1;
+      if (! Write_bytes(file,&buffer,sizeof(T_KCF_Header)))
+        File_error=1;
     }
     else
     {
@@ -1228,7 +1217,7 @@ void Save_KCF(T_IO_Context * context)
       for (index=0;index<16;index++) // Initialisation du filler 2 (?)
         header2.Filler2[index]=0;
 
-      if (!Write_bytes(file,header2.Signature,4)
+      if (!Write_bytes(file,header2.Signature,sizeof(header2.Signature))
       || !Write_byte(file,header2.Kind)
       || !Write_byte(file,header2.Nb_bits)
       || !Write_word_le(file,header2.Filler1)
@@ -1236,7 +1225,7 @@ void Save_KCF(T_IO_Context * context)
       || !Write_word_le(file,header2.Height)
       || !Write_word_le(file,header2.X_offset)
       || !Write_word_le(file,header2.Y_offset)
-      || !Write_bytes(file,header2.Filler2,14)
+      || !Write_bytes(file,header2.Filler2,sizeof(header2.Filler2))
       )
         File_error=1;
 
@@ -1332,29 +1321,17 @@ void PI1_decode_palette(byte * src,byte * palette)
   //    Low        High
   // VVVV RRRR | 0000 BBBB
   // 0321 0321 |      0321
-  
+
   ip=0;
   for (i=0;i<16;i++)
   {
-    #if SDL_BYTEORDER == SDL_LIL_ENDIAN 
-   
-      w=(((word)src[(i*2)+1]<<8) | (src[(i*2)+0]));
-    
-      // Traitement des couleurs rouge, verte et bleue:
-      palette[ip++]=(((w & 0x0007) <<  1) | ((w & 0x0008) >>  3)) << 4;
-      palette[ip++]=(((w & 0x7000) >> 11) | ((w & 0x8000) >> 15)) << 4;
-      palette[ip++]=(((w & 0x0700) >>  7) | ((w & 0x0800) >> 11)) << 4;
-   
-    #else
-      w=(((word)src[(i*2+1)])|(((word)src[(i*2)])<<8));
-    
-      palette[ip++] = (((w & 0x0700)>>7) | ((w & 0x0800) >> 7))<<4 ;
-      palette[ip++]=(((w & 0x0070)>>3) | ((w & 0x0080) >> 3))<<4 ;
-      palette[ip++] = (((w & 0x0007)<<1) | ((w & 0x0008)))<<4 ;
-    #endif
-    
-    
-  } 
+    w=((word)src[(i*2)+1]<<8) | src[(i*2)+0];
+
+    // Traitement des couleurs rouge, verte et bleue:
+    palette[ip++]=(((w & 0x0007) <<  1) | ((w & 0x0008) >>  3)) << 4;
+    palette[ip++]=(((w & 0x7000) >> 11) | ((w & 0x8000) >> 15)) << 4;
+    palette[ip++]=(((w & 0x0700) >>  7) | ((w & 0x0800) >> 11)) << 4;
+  }
 }
 
 //// CODAGE de la PALETTE ////
@@ -1367,31 +1344,20 @@ void PI1_code_palette(byte * palette,byte * dest)
 
   // Schéma d'un word =
   //
-  // Low        High
+  //    Low        High
   // VVVV RRRR | 0000 BBBB
   // 0321 0321 |      0321
-    
+
   ip=0;
   for (i=0;i<16;i++)
   {
-    #if SDL_BYTEORDER == SDL_LIL_ENDIAN
-   
     // Traitement des couleurs rouge, verte et bleue:
     w =(((word)(palette[ip]>>2) & 0x38) >> 3) | (((word)(palette[ip]>>2) & 0x04) <<  1); ip++;
     w|=(((word)(palette[ip]>>2) & 0x38) << 9) | (((word)(palette[ip]>>2) & 0x04) << 13); ip++;
     w|=(((word)(palette[ip]>>2) & 0x38) << 5) | (((word)(palette[ip]>>2) & 0x04) <<  9); ip++;
-    
+
     dest[(i*2)+0]=w & 0x00FF;
     dest[(i*2)+1]=(w>>8);
-    #else
-   
-     w=(((word)(palette[ip]<<3))&0x0700);ip++;
-     w|=(((word)(palette[ip]>>1))&0x0070);ip++;
-     w|=(((word)(palette[ip]>>5))&0x0007);ip++;
- 
-    dest[(i*2)+1]=w & 0x00FF;
-    dest[(i*2)+0]=(w>>8);
-    #endif
   }
 }
 
@@ -2330,13 +2296,13 @@ int Save_C64_window(byte *saveWhat, byte *loadAddr)
     Print_in_window(13,18,"Data:",MC_Dark,MC_Light);
     what=Window_set_dropdown_button(10,28,90,15,70,what_label[*saveWhat],1, 0, 1, LEFT_SIDE,0);
     Window_dropdown_clear_items(what);
-    for (i=0; i<sizeof(what_label)/sizeof(what_label[0]); i++)
+    for (i=0; i<sizeof(what_label)/sizeof(char *); i++)
         Window_dropdown_add_item(what,i,what_label[i]);
     
     Print_in_window(113,18,"Address:",MC_Dark,MC_Light);
     addr=Window_set_dropdown_button(110,28,70,15,70,address_label[*loadAddr/32],1, 0, 1, LEFT_SIDE,0);
     Window_dropdown_clear_items(addr);
-    for (i=0; i<sizeof(address_label)/sizeof(address_label[0]); i++)
+    for (i=0; i<sizeof(address_label)/sizeof(char *); i++)
         Window_dropdown_add_item(addr,i,address_label[i]); 
     
     Update_window_area(0,0,Window_width,Window_height); 

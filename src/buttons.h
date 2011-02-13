@@ -670,9 +670,5 @@ void Button_Smear_mode(void);
 
 void Button_Brush_container(void);
 
-byte Store_paintbrush(int index);
-
-void Select_paintbrush(int index);
-
 #endif
 

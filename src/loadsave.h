@@ -37,14 +37,6 @@ enum CONTEXT_TYPE {
   CONTEXT_SURFACE,
 };
 
-/// Data for a cycling color series. Heavily cloned from T_Gradient_array.
-typedef struct
-{
-  byte Start;    ///< First color
-  byte End;      ///< Last color
-  byte Inverse;  ///< Boolean, true if the gradient goes in descending order
-  byte Speed;    ///< Frequency of cycling, from 1 (slow) to 64 (fast)
-} T_Color_cycle;
 
 typedef struct
 {
@@ -79,9 +71,6 @@ typedef struct
   /// Original file directory, stored in GIF file
   char * Original_file_directory;
 
-  byte Color_cycles;
-  T_Color_cycle Cycle_range[16];
-
   /// Internal: during load, marks which layer is being loaded.
   short Current_layer;
 
@@ -98,16 +87,11 @@ typedef struct
   short Preview_factor_Y;
   short Preview_pos_X;
   short Preview_pos_Y;
-  byte *Preview_bitmap;
-  byte  Preview_usage[256];
   
   // Internal: returned surface for SDL_Surface case
   SDL_Surface * Surface;
 
 } T_IO_Context;
-
-#define PREVIEW_WIDTH  120
-#define PREVIEW_HEIGHT  80
 
 /// Type of a function that can be called for a T_IO_Context. Kind of a method.
 typedef void (* Func_IO) (T_IO_Context *);
@@ -181,10 +165,8 @@ extern T_Format File_formats[];
 /// is too high.
 void Image_emergency_backup(void);
 
-///
 /// Load an arbitrary SDL_Surface.
-/// @param gradients Pass the address of a target T_Gradient_array if you want the gradients, NULL otherwise
-SDL_Surface * Load_surface(char *full_name, T_Gradient_array *gradients);
+SDL_Surface * Load_surface(char *full_name);
 
 
 /*
@@ -196,8 +178,12 @@ T_Format * Get_fileformat(byte format);
 
 // -- File formats
 
-/// Total number of known file formats
-unsigned int Nb_known_formats(void);
+#ifndef __no_pnglib__
+#define NB_KNOWN_FORMATS 19 ///< Total number of known file formats.
+#else
+// Without pnglib
+#define NB_KNOWN_FORMATS 18 ///< Total number of known file formats.
+#endif
 
 // Internal use
 
@@ -224,6 +210,7 @@ void Set_layer(T_IO_Context *context, byte layer);
 // =================================================================
 
 // This is here and not in fileformats.c because the emergency save uses it...
+#pragma pack(1)
 typedef struct
 {
   byte Filler1[6];
@@ -232,6 +219,7 @@ typedef struct
   byte Filler2[118];
   T_Palette Palette;
 } T_IMG_Header;
+#pragma pack()
 
 // Data for 24bit loading
 
